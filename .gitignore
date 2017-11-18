@@ -1,0 +1,5 @@
+__pycache__/
+.vscode/
+.model_weights.hdf5
+sub.csv
+input/
