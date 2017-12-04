@@ -3,3 +3,4 @@ __pycache__/
 .model_weights.hdf5
 sub.csv
 input/
+logs/
