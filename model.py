@@ -1,61 +1,66 @@
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Input, Flatten, Activation, concatenate, AveragePooling2D, GlobalAveragePooling2D
+from keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Input, Flatten, Activation, concatenate, AveragePooling2D, GlobalAveragePooling2D, Cropping2D
 from keras.layers import GlobalMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers.merge import Concatenate
 from keras.models import Model
 from keras import initializers, applications
 from keras.optimizers import Adam, Adagrad
-from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping, TensorBoard
+from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping, TensorBoard, LearningRateScheduler
 import keras.backend as K
 
 
 def MyNet():
     model = Sequential()
 
-    model.add(BatchNormalization(input_shape=(75, 75, 3)))
-
-    # Input 75x75x3
-    # Layer 1
-    model.add(Conv2D(256, (5, 5), activation='relu', input_shape=(75, 75, 3)))
-    model.add(Conv2D(128, (5, 5), activation='relu'))
-    model.add(Conv2D(64, (5, 5), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    model.add(Dropout(0.2))
-
-    # Layer 2
+    model.add(Conv2D(
+        64, kernel_size=(3, 3), input_shape=(75, 75, 3)))
+    model.add(Activation('relu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(Conv2D(128, (3, 3), activation='relu'))
-    model.add(Conv2D(256, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+    model.add(MaxPooling2D(
+        pool_size=(3, 3), strides=(2, 2)))
     model.add(Dropout(0.2))
 
-    # Layer 3
+    model.add(Conv2D(128, kernel_size=(3, 3)))
+    model.add(Activation('relu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(64, (1, 1), activation='relu'))
+    model.add(MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2)))
     model.add(Dropout(0.2))
+
+    model.add(Conv2D(128, kernel_size=(3, 3)))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2)))
+    model.add(Dropout(0.3))
+
+    model.add(Conv2D(64, kernel_size=(3, 3)))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2)))
+    model.add(Dropout(0.3))
 
     model.add(Flatten())
 
     model.add(Dense(512))
     model.add(Activation('relu'))
+    model.add(BatchNormalization())
     model.add(Dropout(0.2))
 
     model.add(Dense(256))
     model.add(Activation('relu'))
-    model.add(Dropout(0.2))
-
-    model.add(Dense(128))
-    model.add(Activation('relu'))
+    model.add(BatchNormalization())
     model.add(Dropout(0.2))
 
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
 
-    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-8)
+    mypotim = Adam(lr=0.01, decay=0.0)
     model.compile(loss='binary_crossentropy',
-                  optimizer=opt, metrics=['accuracy'])
+                  optimizer=mypotim, metrics=['accuracy'])
+
     model.summary()
     return model
 
@@ -64,23 +69,24 @@ def MyNetv2(activation='relu'):
     pic_input = Input(shape=(75, 75, 3))
     ang_input = Input(shape=(1,))
 
-    cnn = BatchNormalization()(pic_input)
+    cnn = Cropping2D(20)(pic_input)
+    cnn = BatchNormalization()(cnn)
     cnn = Conv2D(32, (3, 3), activation=activation)(cnn)
-    cnn = AveragePooling2D()(cnn)
+    # cnn = AveragePooling2D()(cnn)
     cnn = BatchNormalization()(cnn)
     cnn = Conv2D(64, (3, 3), activation=activation)(cnn)
     cnn = BatchNormalization()(cnn)
-    cnn = Conv2D(128, (5, 5), activation=activation)(cnn)
-    cnn = BatchNormalization()(cnn)
-    cnn = Conv2D(256, (5, 5), activation=activation)(cnn)
-    cnn = BatchNormalization()(cnn)
-    cnn = Conv2D(512, (1, 1), activation=activation)(cnn)
-    cnn = BatchNormalization()(cnn)
+    # cnn = Conv2D(128, (5, 5), activation=activation)(cnn)
+    # cnn = BatchNormalization()(cnn)
+    # cnn = Conv2D(256, (5, 5), activation=activation)(cnn)
+    # cnn = BatchNormalization()(cnn)
+    # cnn = Conv2D(512, (1, 1), activation=activation)(cnn)
+    # cnn = BatchNormalization()(cnn)
     cnn = MaxPooling2D()(cnn)
     cnn = Conv2D(512, (9, 9), activation=activation)(cnn)
 
-    # cnn = GlobalAveragePooling2D()(cnn)
-    cnn = Flatten()(cnn)
+    cnn = GlobalAveragePooling2D()(cnn)
+    # cnn = Flatten()(cnn)
     cnn = concatenate([cnn, ang_input])
     cnn = BatchNormalization()(cnn)
     cnn = Dense(2048, activation=activation)(cnn)
@@ -101,8 +107,7 @@ def MyNetv2(activation='relu'):
     cnn = Dense(1, activation='sigmoid')(cnn)
 
     simple_cnn = Model(inputs=[pic_input, ang_input], outputs=cnn)
-    # opt = Adagrad(lr=0.001,epsilon=1e-6,decay=0.)
-    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-8, decay=0.)
+    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-8, decay=0.001)
     simple_cnn.compile(
         optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
     simple_cnn.summary()
@@ -131,23 +136,21 @@ def MyNetv3(img_width, img_height):
     model_final = Model(inputs=[vgg.input, ang_input], outputs=prediction)
     model_final.summary()
     model_final.compile(
-        optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        optimizer=Adam(lr=0.0005), loss='binary_crossentropy', metrics=['accuracy'])
     return model_final
 
 
 def get_callbacks(filepath, patience=2, early_stopping=False):
-    callbacks = []
+    es = EarlyStopping('val_loss', patience=patience, mode="auto")
+    checkpoint = ModelCheckpoint(filepath, save_best_only=True)
+    tb = TensorBoard(log_dir='./logs', batch_size=32)
     if early_stopping:
-        callbacks.append(EarlyStopping(
-            'val_loss', patience=patience, mode="auto"))
-    callbacks.append(ModelCheckpoint(filepath, save_best_only=True))
-    callbacks.append(TensorBoard(log_dir='./logs', batch_size=32))
-    return callbacks
+        return [es, checkpoint, tb]
+    return [checkpoint, tb]
 
 
-file_path = ".model_weights.hdf5"
-callbacks = get_callbacks(filepath=file_path, patience=20, early_stopping=True)
+file_path = "model_weights.hdf5"
+callbacks = get_callbacks(filepath=file_path, patience=50, early_stopping=True)
 
 if __name__ == "__main__":
-    MyNetv2()
-    # MyNetv3(75, 75)
+    MyNet()
