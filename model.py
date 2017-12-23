@@ -10,59 +10,121 @@ from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping, TensorBoar
 import keras.backend as K
 
 
-def MyNet():
-    model = Sequential()
+def MyNet(opt):
+    # model = Sequential()
+    # # model.add(BatchNormalization())
 
-    model.add(Conv2D(
-        64, kernel_size=(3, 3), input_shape=(75, 75, 3)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(
-        pool_size=(3, 3), strides=(2, 2)))
-    model.add(Dropout(0.2))
+    # model.add(Conv2D(
+    #     64, kernel_size=(3, 3), input_shape=(75, 75, 3)))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(MaxPooling2D(
+    #     pool_size=(3, 3), strides=(2, 2)))
+    # model.add(Dropout(0.2))
 
-    model.add(Conv2D(128, kernel_size=(3, 3)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(
-        pool_size=(2, 2), strides=(2, 2)))
-    model.add(Dropout(0.2))
+    # model.add(Conv2D(128, kernel_size=(3, 3)))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(MaxPooling2D(
+    #     pool_size=(2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.2))
 
-    model.add(Conv2D(128, kernel_size=(3, 3)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(
-        pool_size=(2, 2), strides=(2, 2)))
-    model.add(Dropout(0.3))
+    # model.add(Conv2D(128, kernel_size=(3, 3)))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(MaxPooling2D(
+    #     pool_size=(2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.3))
 
-    model.add(Conv2D(64, kernel_size=(3, 3)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(
-        pool_size=(2, 2), strides=(2, 2)))
-    model.add(Dropout(0.3))
+    # model.add(Conv2D(64, kernel_size=(3, 3)))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(MaxPooling2D(
+    #     pool_size=(2, 2), strides=(2, 2)))
+    # model.add(Dropout(0.3))
 
-    model.add(Flatten())
+    # model.add(Flatten())
 
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.2))
+    # angle_input = Input(shape=(1,))
+    # angle_input = BatchNormalization()(angle_input)
 
-    model.add(Dense(256))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.2))
+    # model.add(concatenate([model, angle_input]))
 
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
+    # model.add(Dense(512))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(Dropout(0.2))
 
-    mypotim = Adam(lr=0.01, decay=0.0)
-    model.compile(loss='binary_crossentropy',
-                  optimizer=mypotim, metrics=['accuracy'])
+    # model.add(Dense(256))
+    # model.add(Activation('relu'))
+    # model.add(BatchNormalization())
+    # model.add(Dropout(0.2))
 
-    model.summary()
-    return model
+    # model.add(Dense(1))
+    # model.add(Activation('sigmoid'))
+
+    # mypotim = Adam(lr=0.01, decay=0.0)
+    # model.compile(inputs=[model, angle_input], outputs=model, loss='binary_crossentropy',
+    #               optimizer=mypotim, metrics=['accuracy'])
+
+    # model.summary()
+    img_input = Input(shape=(75, 75, 3))
+    angle_input = Input(shape=(1,))
+
+    model = Conv2D(
+        64, kernel_size=(3, 3), input_shape=(75, 75, 3))(img_input)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = MaxPooling2D(
+        pool_size=(3, 3), strides=(2, 2))(model)
+    model = Dropout(0.4)(model)
+
+    model = Conv2D(128, kernel_size=(3, 3))(model)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2))(model)
+    model = Dropout(0.4)(model)
+
+    model = Conv2D(128, kernel_size=(3, 3))(model)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2))(model)
+    model = Dropout(0.5)(model)
+
+    model = Conv2D(64, kernel_size=(3, 3))(model)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = MaxPooling2D(
+        pool_size=(2, 2), strides=(2, 2))(model)
+    model = Dropout(0.5)(model)
+
+    model = Flatten()(model)
+
+    model = concatenate([model, angle_input])
+
+    model = Dense(512)(model)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = Dropout(0.5)(model)
+
+    model = Dense(256)(model)
+    model = Activation('relu')(model)
+    model = BatchNormalization()(model)
+    model = Dropout(0.5)(model)
+
+    model = Dense(1)(model)
+    model = Activation('sigmoid')(model)
+
+    # mypotim = Adam(lr=0.01, decay=0.0)
+    final_model = Model(inputs=[img_input, angle_input], outputs=model)
+    final_model.compile(loss='binary_crossentropy',
+                        optimizer=opt, metrics=['accuracy'])
+
+    final_model.summary()
+
+    return final_model
 
 
 def MyNetv2(activation='relu'):

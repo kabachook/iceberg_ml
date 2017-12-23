@@ -5,8 +5,8 @@ os.environ[
 import keras
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten, LeakyReLU
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Flatten, LeakyReLU, Conv2D, MaxPooling2D
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard, LearningRateScheduler
 from keras.optimizers import Adam
 from keras.models import model_from_json
 from sklearn.model_selection import train_test_split
@@ -15,19 +15,56 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-from model import callbacks, file_path, MyNetv2, MyNetv3, MyNet
+
+from model import file_path, MyNetv2, MyNetv3, MyNet
 
 
 # Constants
-batch_size = 64
-epochs = 40
+batch_size = 128
+epochs = 100
 predict = False
+
+seed = 123124
+np.random.seed(seed)
+
+submit_only = False
 
 train_file = os.path.join(os.getcwd(), "./input/train.json")
 test_file = os.path.join(os.getcwd(), "./input/test.json")
+model_file = os.path.join(os.getcwd(), "./model_checkpoint.hdf5")
+model_json_file = os.path.join(os.getcwd(), "./model.json")
+logs_dir = os.path.join(os.getcwd(), "./logs/")
 
-seed = 4444
-np.random.seed(seed)
+
+
+
+class PlotLosses(keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        plt.ion()
+        plt.show()
+        self.i = 0
+        self.x = []
+        self.losses = []
+        self.val_losses = []
+
+        self.fig = plt.figure()
+
+        self.logs = []
+
+    def on_epoch_end(self, epoch, logs={}):
+
+        self.logs.append(logs)
+        self.x.append(self.i)
+        self.losses.append(logs.get('loss'))
+        self.val_losses.append(logs.get('val_loss'))
+        self.i += 1
+
+        plt.plot(self.x, self.losses, label="loss")
+        plt.plot(self.x, self.val_losses, label="val_loss")
+        # plt.legend()
+        plt.draw()
+        plt.pause(0.01)
+
 
 def transform(df):
     images = []
@@ -82,65 +119,74 @@ def augment(images):
     return images
 
 
-# data = pd.read_json("input\\train.json")
-data = pd.read_json(train_file)
-data.inc_angle = data.inc_angle.map(lambda x: 0.0 if x == "na" else x)
+if not submit_only:
+    data = pd.read_json(train_file)
+    data.inc_angle = data.inc_angle.map(lambda x: 0.0 if x == "na" else x)
 
+    train_X = transform(data)
+    train_y = np.array(data['is_iceberg'])
 
-train_X = transform(data)
-train_y = np.array(data['is_iceberg'])
+    indx_tr = np.where(data.inc_angle > 0)
 
-indx_tr = np.where(data.inc_angle > 0)
-print(indx_tr[0].shape)
+    train_y = train_y[indx_tr[0]]
+    train_X = train_X[indx_tr[0], ...]
+    train_angle = data.inc_angle[indx_tr[0]]
 
-train_y = train_y[indx_tr[0]]
-train_X = train_X[indx_tr[0], ...]
+    train_X = augment(train_X)
+    train_y = np.concatenate((train_y, train_y, train_y, train_y))
+    train_angle = np.concatenate(
+        (train_angle, train_angle, train_angle, train_angle))
 
-train_X = augment(train_X)
-train_y = np.concatenate((train_y, train_y, train_y, train_y))
+    print(len(train_X), batch_size)
 
-print(train_X.shape)
-print(train_y.shape)
+    lr = 0.01
+    opt = Adam(lr=0.01,decay=lr/epochs)
+    model = MyNet(opt)
+    callbacks = [ModelCheckpoint(model_file, save_best_only=True),
+                 ReduceLROnPlateau(),
+                 #PlotLosses(),
+                 TensorBoard(log_dir=logs_dir,batch_size=batch_size,write_images=True),]
+                 #LearningRateScheduler(schedule)]
+    try:
+        history = model.fit(x=[train_X, train_angle], y=train_y, epochs=epochs, verbose=1, validation_split=0.125,
+                        callbacks=callbacks, batch_size=batch_size)
+    except KeyboardInterrupt:
+        pass
 
+    plt.show()
+    
 
-model = MyNet()
+    print(history.history.keys())
+    fig = plt.figure()
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
 
-history = model.fit(train_X, train_y, batch_size=batch_size, epochs=epochs, verbose=1, validation_split=0.1,
-                    callbacks=callbacks)
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper right')
+    plt.show()
 
-
-print(history.history.keys())
-fig = plt.figure()
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper right')
-plt.show()
-
-
-model_json = model.to_json()
-with open("./model.json", "w") as json_file:
-    json_file.write(model_json)
+    model_json = model.to_json()
+    with open(model_json_file, "w") as json_file:
+        json_file.write(model_json)
 
 # load json and create model
 json_file = open(
-    './model.json', 'r')
+    model_json_file, 'r')
 loaded_model_json = json_file.read()
 json_file.close()
 loaded_model = model_from_json(loaded_model_json)
 # load weights into new model
 loaded_model.load_weights(
-    file_path)
+    model_file)
 print("Loaded model from disk")
 loaded_model.compile(loss='binary_crossentropy',
                      optimizer=Adam(lr=0.01, decay=0), metrics=['accuracy'])
