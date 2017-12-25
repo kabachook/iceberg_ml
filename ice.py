@@ -1,6 +1,11 @@
 import os
-os.environ[
-    'PATH'] = f'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\bin;{os.environ["PATH"]}'
+import platform
+import argparse
+
+# Need to do that before keras import on Windows
+if platform.system == "Windows":
+    os.environ[
+        'PATH'] = f'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\bin;{os.environ["PATH"]}'
 
 import keras
 from keras.preprocessing.image import ImageDataGenerator
@@ -22,7 +27,10 @@ from model import file_path, MyNetv2, MyNetv3, MyNet
 # Constants
 batch_size = 128
 epochs = 100
+
+fit = True
 predict = False
+
 
 seed = 123124
 np.random.seed(seed)
@@ -36,6 +44,15 @@ model_json_file = os.path.join(os.getcwd(), "./model.json")
 logs_dir = os.path.join(os.getcwd(), "./logs/")
 
 
+parser = argparse.ArgumentParser(
+    description="ML model for iceberg recognision challenge on Kaggle")
+parser.add_argument("--nofit", action="store_false", default=True, dest="fit")
+parser.add_argument("--predict", action="store_true", default=False)
+parser.add_argument("--batchsize", type=int, default=32)
+parser.add_argument("--epochs", type=int,  default=100)
+parser.add_argument("--logsdir", default="./logs/")
+
+logs_dir = logs_dir = os.path.join(os.getcwd(), parser.logsdir)
 
 
 class PlotLosses(keras.callbacks.Callback):
@@ -119,7 +136,7 @@ def augment(images):
     return images
 
 
-if not submit_only:
+if fit:
     data = pd.read_json(train_file)
     data.inc_angle = data.inc_angle.map(lambda x: 0.0 if x == "na" else x)
 
@@ -140,21 +157,18 @@ if not submit_only:
     print(len(train_X), batch_size)
 
     lr = 0.01
-    opt = Adam(lr=0.01,decay=lr/epochs)
+    opt = Adam(lr=0.01, decay=lr / epochs)
     model = MyNet(opt)
     callbacks = [ModelCheckpoint(model_file, save_best_only=True),
                  ReduceLROnPlateau(),
-                 #PlotLosses(),
-                 TensorBoard(log_dir=logs_dir,batch_size=batch_size,write_images=True),]
-                 #LearningRateScheduler(schedule)]
+                 # PlotLosses(),
+                 TensorBoard(log_dir=logs_dir, batch_size=batch_size, write_images=True), ]
+    # LearningRateScheduler(schedule)]
     try:
         history = model.fit(x=[train_X, train_angle], y=train_y, epochs=epochs, verbose=1, validation_split=0.125,
-                        callbacks=callbacks, batch_size=batch_size)
+                            callbacks=callbacks, batch_size=batch_size)
     except KeyboardInterrupt:
         pass
-
-    plt.show()
-    
 
     print(history.history.keys())
     fig = plt.figure()
@@ -178,29 +192,30 @@ if not submit_only:
     with open(model_json_file, "w") as json_file:
         json_file.write(model_json)
 
-# load json and create model
-json_file = open(
-    model_json_file, 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-loaded_model = model_from_json(loaded_model_json)
-# load weights into new model
-loaded_model.load_weights(
-    model_file)
-print("Loaded model from disk")
-loaded_model.compile(loss='binary_crossentropy',
-                     optimizer=Adam(lr=0.01, decay=0), metrics=['accuracy'])
+if predict:
+    # load json and create model
+    json_file = open(
+        model_json_file, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    loaded_model.load_weights(
+        model_file)
+    print("Loaded model from disk")
+    loaded_model.compile(loss='binary_crossentropy',
+                         optimizer=Adam(lr=0.01, decay=0), metrics=['accuracy'])
 
-test = pd.read_json(test_file)
-test.inc_angle = test.inc_angle.replace('na', 0)
-test_X = transform(test)
-print(test_X.shape)
+    test = pd.read_json(test_file)
+    test.inc_angle = test.inc_angle.replace('na', 0)
+    test_X = transform(test)
+    print(test_X.shape)
 
-pred_test = loaded_model.predict(test_X, verbose=1)
-submission = pd.DataFrame(
-    {'id': test["id"], 'is_iceberg': pred_test.reshape((pred_test.shape[0]))})
-submission.to_csv(
-    'submission.csv', index=False)
+    pred_test = loaded_model.predict(test_X, verbose=1)
+    submission = pd.DataFrame(
+        {'id': test["id"], 'is_iceberg': pred_test.reshape((pred_test.shape[0]))})
+    submission.to_csv(
+        'submission.csv', index=False)
 
 
 # def gen_flow_for_two_inputs(X1, X2, y, gen):

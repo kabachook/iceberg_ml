@@ -1,6 +1,7 @@
 __pycache__/
 .vscode/
 model_weights.hdf5
+model_checkpoint.hdf5
 model.json
 submission.csv
 input/
