@@ -21,11 +21,11 @@ import numpy as np
 import pandas as pd
 
 
-from model import file_path, MyNetv2, MyNetv3, MyNet
+from model import MyNetv2, MyNetv3, MyNet
 
 
 # Constants
-batch_size = 128
+batch_size = 32
 epochs = 100
 
 fit = True
@@ -51,8 +51,6 @@ parser.add_argument("--predict", action="store_true", default=False)
 parser.add_argument("--batchsize", type=int, default=32)
 parser.add_argument("--epochs", type=int,  default=100)
 parser.add_argument("--logsdir", default="./logs/")
-
-logs_dir = logs_dir = os.path.join(os.getcwd(), parser.logsdir)
 
 
 class PlotLosses(keras.callbacks.Callback):
@@ -156,19 +154,17 @@ if fit:
 
     print(len(train_X), batch_size)
 
-    lr = 0.01
-    opt = Adam(lr=0.01, decay=lr / epochs)
+    lr = 0.0005
+    opt = Adam(lr=0.01, decay=5e-5)
     model = MyNet(opt)
     callbacks = [ModelCheckpoint(model_file, save_best_only=True),
                  ReduceLROnPlateau(),
                  # PlotLosses(),
+                 EarlyStopping(patience=10),
                  TensorBoard(log_dir=logs_dir, batch_size=batch_size, write_images=True), ]
     # LearningRateScheduler(schedule)]
-    try:
-        history = model.fit(x=[train_X, train_angle], y=train_y, epochs=epochs, verbose=1, validation_split=0.125,
-                            callbacks=callbacks, batch_size=batch_size)
-    except KeyboardInterrupt:
-        pass
+    history = model.fit(x=[train_X, train_angle], y=train_y, epochs=epochs, verbose=1, validation_split=0.25,
+                        callbacks=callbacks, batch_size=batch_size)
 
     print(history.history.keys())
     fig = plt.figure()

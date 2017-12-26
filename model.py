@@ -73,46 +73,61 @@ def MyNet(opt):
 
     model = Conv2D(
         64, kernel_size=(3, 3), input_shape=(75, 75, 3))(img_input)
+    # model = BatchNormalization()(model)
     model = Activation('relu')(model)
-    model = BatchNormalization()(model)
     model = MaxPooling2D(
         pool_size=(3, 3), strides=(2, 2))(model)
-    model = Dropout(0.4)(model)
+    model = Dropout(0.2)(model)
 
     model = Conv2D(128, kernel_size=(3, 3))(model)
+    # model = BatchNormalization()(model)
     model = Activation('relu')(model)
-    model = BatchNormalization()(model)
     model = MaxPooling2D(
         pool_size=(2, 2), strides=(2, 2))(model)
-    model = Dropout(0.4)(model)
+    model = Dropout(0.2)(model)
 
     model = Conv2D(128, kernel_size=(3, 3))(model)
+    # model = BatchNormalization()(model)
     model = Activation('relu')(model)
-    model = BatchNormalization()(model)
     model = MaxPooling2D(
         pool_size=(2, 2), strides=(2, 2))(model)
-    model = Dropout(0.5)(model)
+    model = Dropout(0.3)(model)
 
     model = Conv2D(64, kernel_size=(3, 3))(model)
+    # model = BatchNormalization()(model)
     model = Activation('relu')(model)
-    model = BatchNormalization()(model)
-    model = MaxPooling2D(
-        pool_size=(2, 2), strides=(2, 2))(model)
-    model = Dropout(0.5)(model)
+    # model = MaxPooling2D(
+        # pool_size=(2, 2), strides=(2, 2))(model)
+    model = Dropout(0.3)(model)
 
     model = Flatten()(model)
 
     model = concatenate([model, angle_input])
 
-    model = Dense(512)(model)
-    model = Activation('relu')(model)
-    model = BatchNormalization()(model)
-    model = Dropout(0.5)(model)
-
     model = Dense(256)(model)
-    model = Activation('relu')(model)
     model = BatchNormalization()(model)
-    model = Dropout(0.5)(model)
+    model = Activation('relu')(model)
+    model = Dropout(0.4)(model)
+
+    model = Dense(128)(model)
+    model = BatchNormalization()(model)
+    model = Activation('relu')(model)
+    model = Dropout(0.4)(model)
+
+    # model = Dense(4096)(model)
+    # model = Activation('relu')(model)
+    # model = BatchNormalization()(model)
+    # model = Dropout(0.5)(model)
+
+    # model = Dense(2048)(model)
+    # model = Activation('relu')(model)
+    # model = BatchNormalization()(model)
+    # model = Dropout(0.5)(model)
+
+    # model = Dense(256)(model)
+    # model = Activation('relu')(model)
+    # model = BatchNormalization()(model)
+    # model = Dropout(0.5)(model)
 
     model = Dense(1)(model)
     model = Activation('sigmoid')(model)
@@ -201,18 +216,5 @@ def MyNetv3(img_width, img_height):
         optimizer=Adam(lr=0.0005), loss='binary_crossentropy', metrics=['accuracy'])
     return model_final
 
-
-def get_callbacks(filepath, patience=2, early_stopping=False):
-    es = EarlyStopping('val_loss', patience=patience, mode="auto")
-    checkpoint = ModelCheckpoint(filepath, save_best_only=True)
-    tb = TensorBoard(log_dir='./logs', batch_size=32)
-    if early_stopping:
-        return [es, checkpoint, tb]
-    return [checkpoint, tb]
-
-
-file_path = "model_weights.hdf5"
-callbacks = get_callbacks(filepath=file_path, patience=50, early_stopping=True)
-
 if __name__ == "__main__":
-    MyNet()
+    MyNet(Adam(lr=0.001))
