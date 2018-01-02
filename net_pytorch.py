@@ -9,7 +9,7 @@ class MyNet(nn.Module):
         super(MyNet, self).__init__()
 
         self.block1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=(3, 3)),
+            nn.Conv2d(2, 64, kernel_size=(3, 3)), # ( 50 - (3 - 1))/1 + 1 = 49
             # nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2)),
@@ -44,10 +44,19 @@ class MyNet(nn.Module):
             self.block1,
             self.block2,
             self.block3,
-            self.block4,
+            # self.block4,
         )
 
         self.classifier = torch.nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.3),
+            nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.3),
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.Dropout(0.3),
@@ -66,6 +75,6 @@ class MyNet(nn.Module):
         x = self.sig(x)
         # print(x.size())
         return x
-
-net = MyNet()
-net(Variable(torch.zeros(2,3,75,75).float()), 0)
+if __name__ == '__main__':
+    net = MyNet()
+    net(Variable(torch.zeros(2,2,50,50).float()), 0)

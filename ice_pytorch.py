@@ -1,4 +1,5 @@
 import os
+import numbers
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,24 +31,26 @@ data['inc_angle'] = pd.to_numeric(data['inc_angle'], errors='coerce')
 
 band_1 = np.concatenate([im for im in data['band_1']]).reshape(-1, 75, 75)
 band_2 = np.concatenate([im for im in data['band_2']]).reshape(-1, 75, 75)
-band_3 = band_1 + band_2
+# band_3 = band_1 + band_2
+band_1 = (band_1 - band_1.mean()) / band_1.std()
+band_2 = (band_2 - band_2.mean()) / band_2.std()
 angles = data['inc_angle'].values
 
-image = np.stack([band_1, band_2, band_3], axis=-1)
+image = np.stack([band_1, band_2], axis=-1)
 
-transform = Compose([
-    ToTensor(),
-    # Normalize(mean=[band_1.mean(), band_2.mean(), band_3.mean()],
-            #   std=[band_1.std(), band_2.std(), band_3.std()]),
-    # ToPILImage(),
-    # RandomHorizontalFlip(),
-    # RandomVerticalFlip(),
-    # RandomRotation(30),
-    # ToTensor()
-])
 
+##########################################################################################################
 
 class IcebergDataset(Dataset):
+    """
+    Dataset for iceberg file
+    Args
+    ----------
+    bands : (numpy array, any dtype) - image with shape H x W x NUM_CHANNELS
+    angles : (numpy array, any dtype) - array of values of angles
+    target : (numpy array, any dtype) - array of ones and zeroes
+    """
+
     def __init__(self, bands, angles, target, transform=None):
         # self.img = torch.from_numpy(bands.astype('float32')).type(torch.FloatTensor)
         self.angles = torch.from_numpy(angles.astype(
@@ -70,6 +73,73 @@ class IcebergDataset(Dataset):
             return (self.img[idx], self.angles[idx], self.target[idx])
 
 
+class CentralCropNumpy(object):
+    """Crops the given image in np.array in format WxHxC at center
+
+    Args
+    ----------
+    size : (sequence or int): Desired output size of the crop. If size is an
+            int instead of sequence like (h, w), a square crop (size, size) is
+            made.
+    """
+
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    def __call__(self, img):
+        x, y = img.shape[0], img.shape[1]
+        cropx, cropy = self.size
+        startx = x // 2 - (cropx // 2)
+        starty = y // 2 - (cropy // 2)
+        return img[starty:starty + cropy, startx:startx + cropx, :]
+
+
+def show_two_channels(img, title=None, show=True):
+    """
+    Shows two-channel images using 2 subplots
+
+    Args
+    ----------
+    img : image in numpy array
+    title : optional, sets title to figure  
+    """
+    fig = plt.figure()
+    if title:
+        fig.suptitle(title)
+    b1 = fig.add_subplot(121)
+    plt.imshow(img[:, :, 0])
+    b1.set_title('Band 1')
+    b2 = fig.add_subplot(122)
+    plt.imshow(img[:, :, 1])
+    b2.set_title('Band 2')
+    if show:
+        plt.show()
+
+
+#########################################################################################################
+
+means = [(band_1/255).mean(), (band_2/255).mean()]
+stds = [(band_1/255).std(), (band_2/255).std()]
+
+transform = Compose([
+    CentralCropNumpy(50),
+    ToTensor(),
+    # Normalize(mean=means,  # Help here pls!!! This doesn't work properly
+            #   std=stds),
+    # ToPILImage(),
+    # RandomHorizontalFlip(),
+    # RandomVerticalFlip(),
+    # RandomRotation(30),
+    # ToTensor()
+])
+
+assert image[0].astype('float32')/255 ==  transform(image[0]).numpy() # FAIL
+
+quit()
+
 # Preparing dataloaders
 ds = IcebergDataset(image, angles, data['is_iceberg'].values, transform)
 
@@ -84,9 +154,6 @@ train_dl = DataLoader(dataset=ds, batch_size=batch_size,
                       sampler=SubsetRandomSampler(train_indices), num_workers=0)
 test_dl = DataLoader(dataset=ds, batch_size=batch_size,
                      sampler=SubsetRandomSampler(test_indices), num_workers=0)
-
-
-# print(iter(train_dl).next())
 
 
 model = MyNet()
@@ -119,8 +186,6 @@ for epoch in range(num_epoches):
         else:
             img, angle, label = Variable(img), Variable(angle), Variable(
                 label)
-
-        # print(img)
 
         out = model(img, angle)
         loss = criterion(out, label)
