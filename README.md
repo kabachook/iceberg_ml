@@ -64,6 +64,8 @@ My model:
 
 ```
 
+It overfits a bit, but decent loss may be achived. 
+
 Data is normalized and augmented(flip,flop)
 
 Ensembling using K-fold is a good idea, so in final submission 10-fold is used
