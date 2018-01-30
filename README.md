@@ -88,3 +88,13 @@ Complete log of CNN training available in `ice.ipynb`
 * Train many weak CNNs and ensemble, i.e. top100 of them
 * Use pretrained VGG16, ResNet, etc.
 * Use diffrerent data preparation, i.e. FFT or sqrmean
+
+## Paprers and links used
+- https://arxiv.org/ftp/arxiv/papers/1612/1612.00983.pdf
+- https://www.kaggle.com/c/statoil-iceberg-classifier-challenge/discussion/48193
+- https://www.kaggle.com/c/statoil-iceberg-classifier-challenge/discussion/48294
+- https://www.kaggle.com/jirivrany/my-best-single-model-simple-cnn-lb-0-1541
+- https://www.kaggle.com/truepk/17th-place-leak-9th-place-lb-0-0985-0-1076
+- https://www.kaggle.com/c/statoil-iceberg-classifier-challenge/discussion/48241
+- https://www.kaggle.com/c/statoil-iceberg-classifier-challenge/discussion/48160
+- https://www.kaggle.com/c/statoil-iceberg-classifier-challenge/discussion/48102
